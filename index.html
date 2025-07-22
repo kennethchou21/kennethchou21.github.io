@@ -1,8 +1,43 @@
-<p>Hello 大家好</p>
-<p>我是霸都丶傲天，这是我的个人网站。 </p>
-<p>很高兴你来到这里, 你可以在以下的网站找到我</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态时间显示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f0f0f0;
+        }
+        #time {
+            font-size: 2em;
+            color: #333;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub 动态时间</h1>
+    <div id="time"></div>
 
-<ul>
-  <li> <a href="https://www.zhihu.com/people/AJLoveChina">知乎</a> </li>
-  <li> <a href="http://hejie.nigeerhuo.com">我的博客(已经不更细了,现在在知乎写文章)</a> </li>
-</ul>
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString(); // 格式化时间
+            document.getElementById("time").textContent = timeString;
+        }
+
+        // 初始加载时间
+        updateTime();
+
+        // 每秒更新时间
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
