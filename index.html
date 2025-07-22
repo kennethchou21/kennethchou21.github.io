@@ -1,43 +1,980 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>动态时间显示</title>
+    <title>增强版工作时间轴系统</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-            background-color: #f0f0f0;
+        :root {
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --warning-color: #fbbc05;
+            --danger-color: #ea4335;
+            --light-gray: #f5f5f5;
+            --dark-gray: #333;
         }
-        #time {
-            font-size: 2em;
-            color: #333;
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
             padding: 20px;
-            background-color: #fff;
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+            overflow-x: auto;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
             border-radius: 10px;
-            display: inline-block;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        
+        .current-time {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 5px;
+        }
+        
+        /* 时间轴样式 */
+        .timeline-container {
+            position: relative;
+            height: 200px;
+            margin: 40px 0;
+        }
+        
+        .timeline {
+            display: flex;
+            position: relative;
+            height: 100px;
+            margin-top: 60px;
+        }
+        
+        .timeline-line {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: var(--primary-color);
+            z-index: 1;
+        }
+        
+        .timeline-pointer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100px;
+            background-color: var(--danger-color);
+            z-index: 3;
+            transform: translateX(-1px);
+        }
+        
+        .timeline-pointer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -8px;
+            width: 18px;
+            height: 18px;
+            background-color: var(--danger-color);
+            border-radius: 50%;
+        }
+        
+        .timeline-item {
+            flex: 1;
+            position: relative;
+            padding-top: 60px;
+            text-align: center;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+        
+        .timeline-item.active::before {
+            background-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.3);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .timeline-item.completed::before {
+            background-color: #ccc;
+        }
+        
+        .timeline-time {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .timeline-content {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-height: 60px;
+        }
+        
+        .timeline-content h3 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+        
+        .timeline-content p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .timeline-item.active .timeline-content {
+            background-color: #e8f0fe;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        .timeline-item.completed .timeline-content {
+            opacity: 0.7;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            height: 4px;
+            background-color: var(--secondary-color);
+            z-index: 2;
+        }
+        
+        /* 指针时钟样式 */
+        .analog-clock-container {
+            display: flex;
+            justify-content: center;
+            margin: 40px 0;
+        }
+        
+        .analog-clock {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #f9f9f9;
+            border: 8px solid #333;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .clock-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background-color: #333;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        
+        .hour-hand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 50px;
+            background-color: #333;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            border-radius: 5px;
+            z-index: 5;
+        }
+        
+        .minute-hand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 3px;
+            height: 70px;
+            background-color: #555;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            border-radius: 3px;
+            z-index: 6;
+        }
+        
+        .second-hand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 80px;
+            background-color: var(--danger-color);
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            z-index: 7;
+        }
+        
+        .clock-number {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* 计算器样式 */
+        .calculator-container {
+            max-width: 300px;
+            margin: 40px auto;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calculator-display {
+            width: 100%;
+            height: 60px;
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 24px;
+            text-align: right;
+            border: none;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        .calculator-btn {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .calculator-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .calculator-btn.operator {
+            background-color: #f0a500;
+            color: white;
+        }
+        
+        .calculator-btn.operator:hover {
+            background-color: #d18e00;
+        }
+        
+        .calculator-btn.equals {
+            background-color: var(--secondary-color);
+            color: white;
+            grid-column: span 2;
+        }
+        
+        .calculator-btn.equals:hover {
+            background-color: #2d9a4a;
+        }
+        
+        /* 太阳光谱图样式 */
+        .spectrum-container {
+            margin: 40px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .spectrum-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+        
+        .spectrum {
+            height: 100px;
+            background: linear-gradient(to right, 
+                #9400D3, #4B0082, #0000FF, #00FF00, #FFFF00, #FF7F00, #FF0000);
+            border-radius: 5px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .spectrum-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 10px;
+        }
+        
+        .spectrum-label {
+            font-size: 12px;
+            color: #555;
+        }
+        
+        .spectrum-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 通知和设置样式 */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px;
+            background-color: var(--secondary-color);
+            color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .settings {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: var(--light-gray);
+            border-radius: 5px;
+        }
+        
+        .settings h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(52, 168, 83, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0); }
+        }
+        
+        @media (max-width: 768px) {
+            .timeline {
+                min-width: 800px;
+            }
+            
+            .container {
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>GitHub 动态时间</h1>
-    <div id="time"></div>
+    <div class="container">
+        <h1>增强版工作时间轴系统</h1>
+        
+        <div class="current-time" id="current-time"></div>
+        
+        <!-- 时间轴部分 -->
+        <div class="timeline-container">
+            <div class="timeline-line"></div>
+            <div class="progress-bar" id="progress-bar"></div>
+            <div class="timeline-pointer" id="timeline-pointer"></div>
+            
+            <div class="timeline" id="timeline">
+                <!-- 时间轴项目将通过JavaScript动态生成 -->
+            </div>
+        </div>
+        
+        <!-- 指针时钟部分 -->
+        <div class="analog-clock-container">
+            <div class="analog-clock">
+                <div class="clock-center"></div>
+                <div class="hour-hand" id="hour-hand"></div>
+                <div class="minute-hand" id="minute-hand"></div>
+                <div class="second-hand" id="second-hand"></div>
+                
+                <!-- 时钟数字 -->
+                <div class="clock-number" style="transform: rotate(0deg) translate(0, -0px)">12</div>
+                <div class="clock-number" style="transform: rotate(30deg) translate(0, -0px)">1</div>
+                <div class="clock-number" style="transform: rotate(60deg) translate(0, -0px)">2</div>
+                <div class="clock-number" style="transform: rotate(90deg) translate(0, -0px)">3</div>
+                <div class="clock-number" style="transform: rotate(120deg) translate(0, -0px)">4</div>
+                <div class="clock-number" style="transform: rotate(150deg) translate(0, -0px)">5</div>
+                <div class="clock-number" style="transform: rotate(180deg) translate(0, -0px)">6</div>
+                <div class="clock-number" style="transform: rotate(210deg) translate(0, -0px)">7</div>
+                <div class="clock-number" style="transform: rotate(240deg) translate(0, -0px)">8</div>
+                <div class="clock-number" style="transform: rotate(270deg) translate(0, -0px)">9</div>
+                <div class="clock-number" style="transform: rotate(300deg) translate(0, -0px)">10</div>
+                <div class="clock-number" style="transform: rotate(330deg) translate(0, -0px)">11</div>
+            </div>
+        </div>
+        
+
+
+        <!-- 太计算器完整部分 -->
+       <!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .calculator-container {
+            width: 300px;
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .calculator-display {
+            width: 100%;
+            height: 60px;
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 24px;
+            text-align: right;
+            border: none;
+            border-radius: 5px;
+            background-color: #424242;
+            color: #ffffff;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        .calculator-btn {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            background-color: #212121;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .calculator-btn:hover {
+            background-color: #424242;
+        }
+        
+        .calculator-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* 黑色按钮样式 */
+        .black-btn {
+            background-color: #000000;
+            color: #ffffff;
+        }
+        
+        .black-btn:hover {
+            background-color: #333333;
+        }
+        
+        .operator {
+            background-color: #616161;
+            color: #ffffff;
+        }
+        
+        .operator:hover {
+            background-color: #757575;
+        }
+        
+        .equals {
+            background-color: #1976D2;
+            color: white;
+        }
+        
+        .equals:hover {
+            background-color: #2196F3;
+        }
+        
+        .clear-btn {
+            background-color: #C62828;
+            color: white;
+        }
+        
+        .clear-btn:hover {
+            background-color: #D32F2F;
+        }
+        
+        .key-press {
+            transform: scale(0.9);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- 计算器部分 -->
+    <div class="calculator-container">
+        <input type="text" class="calculator-display" id="calculator-display" readonly>
+        <div class="calculator-buttons">
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('7')">7</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('8')">8</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('9')">9</button>
+            <button class="calculator-btn operator" onclick="appendToDisplay('/')">/</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('4')">4</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('5')">5</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('6')">6</button>
+            <button class="calculator-btn operator" onclick="appendToDisplay('*')">×</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('1')">1</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('2')">2</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('3')">3</button>
+            <button class="calculator-btn operator" onclick="appendToDisplay('-')">-</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('0')">0</button>
+            <button class="calculator-btn black-btn" onclick="appendToDisplay('.')">.</button>
+            <button class="calculator-btn clear-btn" onclick="clearDisplay()">C</button>
+            <button class="calculator-btn operator" onclick="appendToDisplay('+')">+</button>
+            <button class="calculator-btn equals" onclick="calculate()">=</button>
+        </div>
+    </div>
 
     <script>
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleString(); // 格式化时间
-            document.getElementById("time").textContent = timeString;
+        // 获取显示区域
+        const display = document.getElementById('calculator-display');
+        
+        // 计算器功能
+        function appendToDisplay(value) {
+            display.value += value;
+            animateButton(value);
         }
+        
+        function clearDisplay() {
+            display.value = '';
+            animateButton('C');
+        }
+        
+        function calculate() {
+            try {
+                display.value = eval(display.value);
+                animateButton('=');
+            } catch (error) {
+                display.value = '错误';
+            }
+        }
+        
+        // 键盘输入功能
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            
+            // 允许的按键
+            const allowedKeys = ['0','1','2','3','4','5','6','7','8','9','.','+','-','*','/','Enter','Backspace','Delete','='];
+            
+            if (allowedKeys.includes(key)) {
+                event.preventDefault();
+                
+                switch(key) {
+                    case 'Enter':
+                    case '=':
+                        calculate();
+                        break;
+                    case 'Backspace':
+                    case 'Delete':
+                        clearDisplay();
+                        break;
+                    default:
+                        appendToDisplay(key);
+                }
+                
+                animateButton(key);
+            }
+        });
+        
+        // 按钮动画效果
+        function animateButton(value) {
+            let button;
+            
+            // 根据输入值找到对应的按钮
+            switch(value) {
+                case '=':
+                case 'Enter':
+                    button = document.querySelector('.equals');
+                    break;
+                case 'C':
+                case 'Backspace':
+                case 'Delete':
+                    button = document.querySelector('.clear-btn');
+                    break;
+                default:
+                    button = Array.from(document.querySelectorAll('.calculator-btn'))
+                        .find(btn => btn.textContent === value || 
+                              (value === '*' && btn.textContent === '×') ||
+                              (value === '/' && btn.textContent === '÷'));
+            }
+            
+            if (button) {
+                button.classList.add('key-press');
+                setTimeout(() => {
+                    button.classList.remove('key-press');
+                }, 100);
+            }
+        }
+    </script>
+</body>
+</html>
 
-        // 初始加载时间
-        updateTime();
+        
 
-        // 每秒更新时间
-        setInterval(updateTime, 1000);
+
+        <!-- 太阳光谱图部分 -->
+        <div class="spectrum-container">
+            <h2 class="spectrum-title">太阳光光谱分布</h2>
+            <div class="spectrum"></div>
+            <div class="spectrum-labels">
+                <span class="spectrum-label">紫外线</span>
+                <span class="spectrum-label">可见光</span>
+                <span class="spectrum-label">红外线</span>
+            </div>
+            <div class="spectrum-info">
+                <p>太阳光谱是太阳发出的电磁辐射在不同波长的分布，包含紫外线(10-400nm)、可见光(400-700nm)和红外线(700nm-1mm)。</p>
+                <p>可见光谱从紫色(约400nm)到红色(约700nm)，中间依次为蓝、绿、黄、橙等颜色。</p>
+            </div>
+        </div>
+        
+
+
+
+        <!-- 设置部分 -->
+        <div class="settings">
+            <h2>设置</h2>
+            <div>
+                <label>
+                    <input type="checkbox" id="enable-notifications" checked>
+                    启用提醒通知
+                </label>
+            </div>
+            <div style="margin-top: 10px;">
+                <button id="test-notification">测试通知</button>
+                <button id="reset-today">重置今日状态</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // 日程数据
+        const schedule = [
+            { start: '8:30', end: '11:00', title: '科研进展讨论', description: '文献阅读、实验数据分析、组会讨论' },
+            { start: '11:00', end: '12:30', title: '日常事务', description: '邮件处理、项目管理、行政事务' },
+            { start: '13:30', end: '14:30', title: '杂事处理', description: '琐事处理、个人事务' },
+            { start: '14:30', end: '17:00', title: '文章与项目', description: '论文写作、专利撰写、项目申请书' },
+            { start: '17:00', end: '18:00', title: '杂事处理', description: '琐事处理、收尾工作' },
+            { start: '19:00', end: '21:00', title: '文献阅读', description: '阅读最新文献、整理研究想法' }
+        ];
+        
+        // DOM元素
+        const currentTimeElement = document.getElementById('current-time');
+        const timelineElement = document.getElementById('timeline');
+        const progressBarElement = document.getElementById('progress-bar');
+        const timelinePointerElement = document.getElementById('timeline-pointer');
+        const hourHandElement = document.getElementById('hour-hand');
+        const minuteHandElement = document.getElementById('minute-hand');
+        const secondHandElement = document.getElementById('second-hand');
+        const calculatorDisplay = document.getElementById('calculator-display');
+        const notificationElement = document.getElementById('notification');
+        const enableNotificationsCheckbox = document.getElementById('enable-notifications');
+        const testNotificationButton = document.getElementById('test-notification');
+        const resetTodayButton = document.getElementById('reset-today');
+        
+        // 全局变量
+        let currentActivityIndex = -1;
+        let checkedToday = false;
+        let timelineStartTime = 0;
+        let timelineEndTime = 0;
+        let timelineTotalMinutes = 0;
+        
+        // 初始化时间轴
+        function initTimeline() {
+            timelineElement.innerHTML = '';
+            
+            // 计算时间轴总跨度
+            const firstItem = parseTime(schedule[0].start);
+            const lastItem = parseTime(schedule[schedule.length - 1].end);
+            timelineStartTime = firstItem.hours * 60 + firstItem.minutes;
+            timelineEndTime = lastItem.hours * 60 + lastItem.minutes;
+            timelineTotalMinutes = timelineEndTime - timelineStartTime;
+            
+            schedule.forEach((item, index) => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item';
+                timelineItem.id = `timeline-item-${index}`;
+                
+                const timeElement = document.createElement('div');
+                timeElement.className = 'timeline-time';
+                timeElement.textContent = `${item.start}`;
+                
+                const contentElement = document.createElement('div');
+                contentElement.className = 'timeline-content';
+                
+                const titleElement = document.createElement('h3');
+                titleElement.textContent = item.title;
+                
+                const descElement = document.createElement('p');
+                descElement.textContent = item.description;
+                
+                contentElement.appendChild(titleElement);
+                contentElement.appendChild(descElement);
+                timelineItem.appendChild(timeElement);
+                timelineItem.appendChild(contentElement);
+                timelineElement.appendChild(timelineItem);
+            });
+        }
+        
+        // 解析时间字符串为小时和分钟
+        function parseTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return { hours, minutes };
+        }
+        
+        // 更新时间显示和时间指针位置
+        function updateCurrentTime() {
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const currentSeconds = now.getSeconds();
+            const currentTotalMinutes = currentHours * 60 + currentMinutes;
+            
+            // 更新时间显示
+            const timeString = now.toLocaleTimeString('zh-CN', { hour12: false });
+            const dateString = now.toLocaleDateString('zh-CN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            });
+            currentTimeElement.textContent = `${dateString} ${timeString}`;
+            
+            // 更新指针位置
+            if (currentTotalMinutes >= timelineStartTime && currentTotalMinutes <= timelineEndTime) {
+                const positionPercentage = ((currentTotalMinutes - timelineStartTime) / timelineTotalMinutes) * 100;
+                timelinePointerElement.style.left = `${positionPercentage}%`;
+            }
+            
+            // 更新时钟指针
+            updateClockHands(currentHours, currentMinutes, currentSeconds);
+            
+            checkCurrentActivity();
+            updateProgressBar();
+            
+            setTimeout(updateCurrentTime, 1000);
+        }
+        
+        // 更新时钟指针
+        function updateClockHands(hours, minutes, seconds) {
+            // 计算各指针的角度
+            const hourDegrees = (hours % 12) * 30 + minutes * 0.5;
+            const minuteDegrees = minutes * 6;
+            const secondDegrees = seconds * 6;
+            
+            // 应用旋转
+            hourHandElement.style.transform = `translate(-50%, -100%) rotate(${hourDegrees}deg)`;
+            minuteHandElement.style.transform = `translate(-50%, -100%) rotate(${minuteDegrees}deg)`;
+            secondHandElement.style.transform = `translate(-50%, -100%) rotate(${secondDegrees}deg)`;
+        }
+        
+        // 更新进度条
+        function updateProgressBar() {
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const currentTotalMinutes = currentHours * 60 + currentMinutes;
+            
+            if (currentActivityIndex >= 0) {
+                const currentActivity = schedule[currentActivityIndex];
+                const startTime = parseTime(currentActivity.start);
+                const endTime = parseTime(currentActivity.end);
+                
+                const activityStart = startTime.hours * 60 + startTime.minutes;
+                const activityEnd = endTime.hours * 60 + endTime.minutes;
+                const activityDuration = activityEnd - activityStart;
+                
+                const progress = (currentTotalMinutes - activityStart) / activityDuration;
+                const progressPercentage = Math.min(Math.max(progress * 100, 0), 100);
+                
+                const itemElement = document.getElementById(`timeline-item-${currentActivityIndex}`);
+                const itemRect = itemElement.getBoundingClientRect();
+                const timelineRect = timelineElement.getBoundingClientRect();
+                
+                const itemStartPercentage = ((itemRect.left - timelineRect.left) / timelineRect.width) * 100;
+                const itemWidthPercentage = (itemRect.width / timelineRect.width) * 100;
+                
+                progressBarElement.style.left = `${itemStartPercentage}%`;
+                progressBarElement.style.width = `${itemWidthPercentage * (progressPercentage / 100)}%`;
+            } else {
+                progressBarElement.style.width = '0';
+            }
+        }
+        
+        // 检查当前活动
+        function checkCurrentActivity() {
+            const now = new Date();
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            let newActivityIndex = -1;
+            
+            // 检查是否在某个活动时间段内
+            schedule.forEach((item, index) => {
+                const [startHour, startMinute] = item.start.split(':').map(Number);
+                const [endHour, endMinute] = item.end.split(':').map(Number);
+                
+                const startTime = new Date();
+                startTime.setHours(startHour, startMinute, 0, 0);
+                
+                const endTime = new Date();
+                endTime.setHours(endHour, endMinute, 0, 0);
+                
+                if (now >= startTime && now <= endTime) {
+                    newActivityIndex = index;
+                }
+            });
+            
+            // 如果活动变化了
+            if (newActivityIndex !== currentActivityIndex) {
+                // 移除之前活动的active类
+                if (currentActivityIndex !== -1) {
+                    const prevActivity = document.getElementById(`timeline-item-${currentActivityIndex}`);
+                    prevActivity.classList.remove('active');
+                    prevActivity.classList.add('completed');
+                }
+                
+                // 添加新活动的active类
+                if (newActivityIndex !== -1) {
+                    const newActivity = document.getElementById(`timeline-item-${newActivityIndex}`);
+                    newActivity.classList.add('active');
+                    
+                    // 显示通知
+                    if (enableNotificationsCheckbox.checked && currentActivityIndex !== -1 && !checkedToday) {
+                        showNotification(`现在是 ${schedule[newActivityIndex].title} 时间`);
+                    }
+                }
+                
+                currentActivityIndex = newActivityIndex;
+                checkedToday = true;
+            }
+        }
+        
+        // 计算器功能
+        function appendToDisplay(value) {
+            calculatorDisplay.value += value;
+        }
+        
+        function clearDisplay() {
+            calculatorDisplay.value = '';
+        }
+        
+        function calculate() {
+            try {
+                calculatorDisplay.value = eval(calculatorDisplay.value);
+            } catch (error) {
+                calculatorDisplay.value = '错误';
+            }
+        }
+        
+        // 显示通知
+        function showNotification(message) {
+            if (!('Notification' in window)) {
+                alert('您的浏览器不支持桌面通知');
+                return;
+            }
+            
+            // 检查通知权限
+            if (Notification.permission === 'granted') {
+                new Notification('日程提醒', { body: message });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('日程提醒', { body: message });
+                    }
+                });
+            }
+            
+            // 显示页面内通知
+            notificationElement.textContent = message;
+            notificationElement.style.display = 'block';
+            
+            setTimeout(() => {
+                notificationElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 初始化
+        function init() {
+            initTimeline();
+            updateCurrentTime();
+            
+            // 请求通知权限
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+            
+            // 测试通知按钮
+            testNotificationButton.addEventListener('click', () => {
+                showNotification('这是一个测试通知');
+            });
+            
+            // 重置今日状态按钮
+            resetTodayButton.addEventListener('click', () => {
+                checkedToday = false;
+                document.querySelectorAll('.timeline-item').forEach(el => {
+                    el.classList.remove('active', 'completed');
+                });
+                alert('今日状态已重置，下一个活动开始时将再次提醒');
+            });
+        }
+        
+        // 启动应用
+        init();
     </script>
 </body>
 </html>
